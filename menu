@@ -1,0 +1,73 @@
+func runMenu(reader *bufio.Reader, tasks *[]Task) {
+	for {
+		fmt.Print(menuText)           
+		choiceStr := readLine(reader) 
+
+		choice, err := strconv.Atoi(strings.TrimSpace(choiceStr))
+		if err != nil || choice < 1 || choice > 8 {
+			fmt.Println("Неверный ввод. Введите число от 1 до 5.")
+			continue
+		}
+
+		switch choice {
+		case 1:
+			handleCreate(reader, tasks)
+		case 2:
+			handleMarkDone(reader, tasks)
+		case 3:
+			handleDelete(reader, tasks)
+		case 4:
+			printBoard(*tasks)
+		case 5:
+			fmt.Println("Завершение работы программы.")
+			return 
+		}
+	}
+}
+func main() {
+	args := os.Args[1:]
+
+	if len(args) > 0 {
+		switch args[0] {
+		case "--help", "-h":
+			fmt.Print(helpText)
+			return
+		default:
+			fmt.Println("Неизвестный аргумент. Используйте --help для справки.")
+			return
+		}
+	}
+
+	tasks, err := loadTasks(tasksFile)
+	if err != nil {
+		fmt.Println("Error: не удалось загрузить задачи:", err)
+		tasks = []Task{}
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	runMenu(reader, &tasks)
+}
+func handleCreate(reader *bufio.Reader, tasks *[]Task) {
+	fmt.Print("Введите название таски: ")
+	title := strings.TrimSpace(readLine(reader))
+
+	if title == "" {
+		fmt.Println("Error: название не может быть пустым.")
+		return
+	}
+
+	newTask := Task{
+		ID:     nextID(*tasks),
+		Title:  title,
+		Status: StatusTodo,
+	}
+	*tasks = append(*tasks, newTask)
+
+	if err := saveTasks(tasksFile, *tasks); err != nil {
+		fmt.Println("Error: не удалось сохранить задачи:", err)
+	}
+}
+func readLine(reader *bufio.Reader) string {
+	line, _ := reader.ReadString('\n')
+	return strings.TrimRight(line, "\r\n")
+}
