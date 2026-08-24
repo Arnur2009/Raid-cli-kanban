@@ -1,0 +1,123 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+const fileName = "tasks.txt"
+
+
+type Task struct {
+	ID     int
+	Title  string
+	Status string
+}
+
+
+func loadTasks() ([]Task, error) {
+	file, err := os.Open(fileName)
+	if os.IsNotExist(err) {
+		
+		return []Task{}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("ошибка открытия файла: %w", err)
+	}
+	defer file.Close()
+
+	var tasks []Task
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue 
+		}
+
+		
+		parts := strings.SplitN(line, ";", 3)
+		if len(parts) < 3 {
+			continue
+		}
+
+		id, err := strconv.Atoi(parts[0])
+		if err != nil {
+			continue 
+		}
+
+		task := Task{
+			ID:     id,
+			Status: parts[1],
+			Title:  parts[2],
+		}
+		tasks = append(tasks, task)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка чтения файла: %w", err)
+	}
+
+	return tasks, nil
+}
+
+
+func saveTasks(tasks []Task) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("ошибка создания файла: %w", err)
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+
+	for _, task := range tasks {
+		line := fmt.Sprintf("%d;%s;%s\n", task.ID, task.Status, task.Title)
+		if _, err := writer.WriteString(line); err != nil {
+			return fmt.Errorf("ошибка записи строки: %w", err)
+		}
+	}
+
+	
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("ошибка сохранения данных: %w", err)
+	}
+
+	return nil
+}
+
+
+func printHelp() {
+	fmt.Println("CLI Task Manager - Менеджер задач")
+	fmt.Println("\nИспользование:")
+	fmt.Println("  go run main.go [флаг]")
+	fmt.Println("\nФлаги:")
+	fmt.Println("  -h, --help    Показать справку по командам")
+}
+
+func main() {
+	args := os.Args[1:]
+
+	if len(args) > 0 {
+		switch args[0] {
+		case "-h", "--help":
+			printHelp()
+			os.Exit(0)
+		default:
+			fmt.Fprintf(os.Stderr, "Ошибка: неизвестный аргумент %q\n\n", args[0])
+			printHelp()
+			os.Exit(1)
+		}
+	}
+
+	tasks, err := loadTasks()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Ошибка загрузки задач: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Загружено задач: %d\n", len(tasks))
+
+}
